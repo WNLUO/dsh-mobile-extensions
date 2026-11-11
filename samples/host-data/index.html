@@ -1,0 +1,142 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>宿主取数</title>
+<style>
+  :root {
+    --bg: var(--dsh-theme-background, #ffffff);
+    --surface: var(--dsh-theme-surface, #f7f7f8);
+    --border: var(--dsh-theme-border, #e5e5e7);
+    --text: var(--dsh-theme-text, #1c1c1e);
+    --secondary: var(--dsh-theme-text-secondary, #3c3c43);
+    --muted: var(--dsh-theme-text-muted, #8a8a8e);
+    --primary: var(--dsh-theme-primary, #2f80ff);
+    --danger: var(--dsh-theme-danger, #ef4444);
+  }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; margin: 0; }
+  body {
+    background: var(--bg); color: var(--text);
+    font: 15px/1.55 -apple-system, BlinkMacSystemFont, "PingFang SC", "Helvetica Neue", sans-serif;
+    padding: 12px 16px max(16px, env(safe-area-inset-bottom));
+    -webkit-font-smoothing: antialiased;
+  }
+  h1 { font-size: 17px; margin: 0 0 2px; }
+  .hint { color: var(--muted); font-size: 12px; margin: 0 0 14px; }
+  .bar { display: flex; gap: 8px; margin-bottom: 14px; }
+  button {
+    font: inherit; color: var(--primary); background: none;
+    border: 1px solid var(--border); border-radius: 10px; padding: 8px 14px;
+  }
+  button:active { opacity: 0.6; }
+  .row {
+    display: flex; align-items: baseline; gap: 8px;
+    padding: 10px 0; border-bottom: 1px solid var(--border);
+  }
+  .row .who { font-weight: 600; }
+  .row .when { margin-left: auto; color: var(--muted); font-size: 12px; font-variant-numeric: tabular-nums; }
+  .empty { color: var(--muted); font-size: 13px; padding: 24px 0; text-align: center; }
+  .note {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 10px;
+    padding: 10px 12px; font-size: 12.5px; color: var(--secondary); margin-top: 12px;
+  }
+  .note code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+  #err { color: var(--danger); font-size: 12px; margin-top: 12px; white-space: pre-wrap; }
+</style>
+</head>
+<body>
+  <h1>宿主取数</h1>
+  <p class="hint">这一页的数据来自电脑上登记过的服务。页面照常 <code>fetch('/api/items')</code>，命中的请求由 App 转给电脑，拿回一份够用的 Response。</p>
+  <div class="bar">
+    <button id="reload">取一次数据</button>
+  </div>
+  <div id="list"><div class="empty">准备中…</div></div>
+  <div class="note" id="note" hidden></div>
+  <p id="err"></p>
+
+<script>
+/*
+ * 演示 host.data（文档 5.5）。
+ * 声明了 hostData 之后，App 会装一段拦截：fetch('/api/items') 这种相对路径自动转给电脑，
+ * 返回的 Response 有 .ok/.status/.text()/.json()/.headers.get()。
+ * 也有显式入口 window.__dshHostFetch(service, path, options)。
+ * 失败也是一份响应（.ok === false，正文带 code）—— 当正常失败处理，给用户一句人话。
+ */
+(function () {
+  var SERVICE = 'example-service';
+  var PATH = '/api/items';
+  var listEl = document.getElementById('list');
+  var noteEl = document.getElementById('note');
+  var errEl = document.getElementById('err');
+  var caps = (window.__DSH_EXTENSION__ && window.__DSH_EXTENSION__.capabilities) || [];
+
+  function escapeHtml(value) {
+    return String(value == null ? '' : value)
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+  }
+
+  /** 取数的入口：有显式函数就用它，否则在声明了 host.data 时走拦截后的相对 fetch。 */
+  function request() {
+    if (typeof window.__dshHostFetch === 'function') {
+      return window.__dshHostFetch(SERVICE, PATH, { method: 'GET' });
+    }
+    if (caps.indexOf('host.data') >= 0) {
+      return fetch(PATH);
+    }
+    return null;
+  }
+
+  function explain() {
+    noteEl.hidden = false;
+    noteEl.innerHTML = '这个示例的 <code>hostData.service</code> 是占位的 <code>example-service</code>，'
+      + '电脑上还没有登记这个服务，所以取不到数据是正常的。<br>要真取到：在自己的插件 '
+      + '<code>package.json</code> 里声明 <code>dshMobileDataServices</code>，'
+      + '并让 <code>manifest.json</code> 的 <code>hostData.service</code> 与它对上（文档 5.5）。';
+  }
+
+  function load() {
+    errEl.textContent = '';
+    noteEl.hidden = true;
+    listEl.innerHTML = '<div class="empty">取数中…</div>';
+    var pending = request();
+    if (!pending) {
+      listEl.innerHTML = '<div class="empty">这一页没有 host.data 能力，取不到电脑上的数据。</div>';
+      return;
+    }
+    pending
+      .then(function (res) {
+        if (!res || res.ok === false) {
+          var status = res && res.status ? ' (HTTP ' + res.status + ')' : '';
+          // 失败正文是一份 JSON，带 code；解析不出来就退回状态码。
+          var asJson = res && typeof res.json === 'function' ? res.json() : Promise.resolve(null);
+          return asJson.then(function (body) {
+            listEl.innerHTML = '<div class="empty">取不到数据' + status + '</div>';
+            errEl.textContent = (body && body.code) ? ('原因：' + body.code) : '电脑没连上，或服务没在跑。';
+            explain();
+          });
+        }
+        return res.json().then(function (body) {
+          var items = (body && body.items) || [];
+          if (!items.length) { listEl.innerHTML = '<div class="empty">服务回了空列表</div>'; return; }
+          listEl.innerHTML = items.map(function (item) {
+            return '<div class="row"><span class="who">' + escapeHtml(item.title) + '</span>'
+              + '<span class="when">' + escapeHtml(item.when || '') + '</span></div>';
+          }).join('');
+        });
+      })
+      .catch(function (error) {
+        listEl.innerHTML = '<div class="empty">取不到数据</div>';
+        errEl.textContent = String(error && error.message ? error.message : error);
+        explain();
+      });
+  }
+
+  document.getElementById('reload').addEventListener('click', load);
+  load();
+})();
+</script>
+</body>
+</html>

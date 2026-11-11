@@ -35,7 +35,7 @@
 ```
 docs/extension-authoring.md      作者须知（唯一来源，发布时同步进插件包）
 docs/extension-sample/           最小可用样例
-samples/                         更多示例的落脚点（见其 README）
+samples/                         更完整的示例（记事本 / 文件 / 宿主取数，见其 README）
 ```
 
 ## 许可
