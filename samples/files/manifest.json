@@ -3,5 +3,6 @@
   "version": "1.0.0",
   "apiVersion": "1",
   "description": "挑系统里的文件看看，再把一段文本存出去。演示 file.pick 与 file.save —— 挑哪份、存到哪都由用户在系统面板里定。",
-  "capabilities": ["content.read", "file.pick", "file.save"]
+  "capabilities": ["content.read", "file.pick", "file.save"],
+  "entry": { "name": "文件演示", "slot": "normal" }
 }

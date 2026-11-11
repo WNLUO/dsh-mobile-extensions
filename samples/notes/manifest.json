@@ -3,5 +3,6 @@
   "version": "1.0.0",
   "apiVersion": "1",
   "description": "用 App 托管的存储记住笔记：关掉页面、换一版扩展都不丢，卸载才清。演示 storage 能力。",
-  "capabilities": ["content.read", "storage"]
+  "capabilities": ["content.read", "storage"],
+  "entry": { "name": "记事本", "slot": "normal" }
 }
