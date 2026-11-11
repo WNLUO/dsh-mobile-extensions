@@ -1,0 +1,126 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>文件演示</title>
+<style>
+  :root {
+    --bg: var(--dsh-theme-background, #ffffff);
+    --surface: var(--dsh-theme-surface, #f7f7f8);
+    --border: var(--dsh-theme-border, #e5e5e7);
+    --text: var(--dsh-theme-text, #1c1c1e);
+    --secondary: var(--dsh-theme-text-secondary, #3c3c43);
+    --muted: var(--dsh-theme-text-muted, #8a8a8e);
+    --primary: var(--dsh-theme-primary, #2f80ff);
+    --danger: var(--dsh-theme-danger, #ef4444);
+  }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; margin: 0; }
+  body {
+    background: var(--bg); color: var(--text);
+    font: 15px/1.55 -apple-system, BlinkMacSystemFont, "PingFang SC", "Helvetica Neue", sans-serif;
+    padding: 12px 16px max(16px, env(safe-area-inset-bottom));
+    -webkit-font-smoothing: antialiased;
+  }
+  h1 { font-size: 17px; margin: 0 0 2px; }
+  .hint { color: var(--muted); font-size: 12px; margin: 0 0 16px; }
+  .bar { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px; }
+  button {
+    font: inherit; color: var(--primary); background: none;
+    border: 1px solid var(--border); border-radius: 10px; padding: 8px 14px;
+  }
+  button:active { opacity: 0.6; }
+  button.primary { color: #fff; background: var(--primary); border-color: var(--primary); }
+  .list .row {
+    display: flex; align-items: baseline; gap: 8px;
+    padding: 10px 0; border-bottom: 1px solid var(--border);
+  }
+  .list .row .name { font-weight: 600; word-break: break-all; min-width: 0; }
+  .list .row .size { margin-left: auto; color: var(--muted); font-size: 12px; font-variant-numeric: tabular-nums; }
+  .empty { color: var(--muted); font-size: 13px; padding: 24px 0; text-align: center; }
+  #status { font-size: 12px; color: var(--secondary); margin-top: 8px; min-height: 1em; }
+  #err { color: var(--danger); font-size: 12px; margin-top: 8px; white-space: pre-wrap; min-height: 1em; }
+</style>
+</head>
+<body>
+  <h1>文件演示</h1>
+  <p class="hint">挑文件、存文件都要经过系统的选择 / 存放面板：挑哪份、存到哪儿永远是你自己定，App 不碰。</p>
+  <div class="bar">
+    <button id="pick" class="primary">挑文件</button>
+    <button id="save">存一段文本</button>
+  </div>
+  <div class="list" id="list"><div class="empty">还没挑文件</div></div>
+  <p id="status"></p>
+  <p id="err"></p>
+
+<script>
+/*
+ * 演示 file.pick / file.save（文档 5.6）。两个入口只在对应能力被授予时才存在，先判再画。
+ * 挑文件回 base64；存文件要自己把字符串编成 base64（btoa 只吃 latin1，中文先过 TextEncoder）。
+ */
+(function () {
+  var ext = window.__dshExtension || {};
+  var listEl = document.getElementById('list');
+  var statusEl = document.getElementById('status');
+  var errEl = document.getElementById('err');
+  var pickBtn = document.getElementById('pick');
+  var saveBtn = document.getElementById('save');
+
+  function escapeHtml(value) {
+    return String(value == null ? '' : value)
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+  }
+  function sizeText(bytes) {
+    if (bytes >= 1024 * 1024) return (bytes / 1024 / 1024).toFixed(1) + ' MB';
+    if (bytes >= 1024) return Math.round(bytes / 1024) + ' KB';
+    return bytes + ' B';
+  }
+  function toBase64(text) {
+    var bytes = new TextEncoder().encode(text);
+    var binary = '';
+    bytes.forEach(function (b) { binary += String.fromCharCode(b); });
+    return btoa(binary);
+  }
+
+  if (typeof ext.pickFiles !== 'function') {
+    pickBtn.disabled = true;
+  } else {
+    pickBtn.addEventListener('click', function () {
+      errEl.textContent = '';
+      statusEl.textContent = '';
+      ext.pickFiles({ multiple: true, accept: 'image/*,application/pdf' })
+        .then(function (files) {
+          if (!files.length) { listEl.innerHTML = '<div class="empty">你取消了（这不是错误）</div>'; return; }
+          listEl.innerHTML = files.map(function (f) {
+            return '<div class="row"><span class="name">' + escapeHtml(f.name) + '</span>'
+              + '<span class="size">' + sizeText(f.size) + '</span></div>';
+          }).join('');
+        })
+        .catch(function (error) {
+          errEl.textContent = '挑不了：' + (error && error.code ? error.code : error);
+        });
+    });
+  }
+
+  if (typeof ext.saveFile !== 'function') {
+    saveBtn.disabled = true;
+  } else {
+    saveBtn.addEventListener('click', function () {
+      errEl.textContent = '';
+      var stamp = new Date().toLocaleString();
+      var text = '这是「文件演示」扩展在 ' + stamp + ' 存出来的一段文本。';
+      ext.saveFile({ name: '演示 ' + Date.now() + '.txt', base64: toBase64(text), mimeType: 'text/plain' })
+        .then(function (result) {
+          statusEl.textContent = result && result.saved ? '已经存好了' : '你在对话框里取消了';
+        })
+        .catch(function (error) {
+          errEl.textContent = '存不了：' + (error && error.code ? error.code : error);
+        });
+    });
+  }
+})();
+</script>
+</body>
+</html>

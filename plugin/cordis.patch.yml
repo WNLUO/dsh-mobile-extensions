@@ -1,0 +1,11 @@
+# dsh bundle patch：把示例扩展插件挂进 profile 的层栈。
+#
+# `name` 必须与包名逐字一致：loader 按包名解析，写歪不报错、只是插件永远不会被载入。
+#
+# 这个包挂上去不做任何事，唯一目的是让它出现在 profile 里 —— 手机扫描已装插件的
+# `package.json` 时读到 `dshMobileExtensions`，包内 `extensions/` 下的三个示例扩展
+# 就会作为可安装项列进手机的扩展页。
+- insert:
+    - id: dsh-mobile-extensions-demo
+      name: 'dsh-mobile-extensions-demo'
+      config: {}

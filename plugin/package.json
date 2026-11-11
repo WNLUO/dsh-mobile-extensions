@@ -1,0 +1,34 @@
+{
+  "name": "dsh-mobile-extensions-demo",
+  "version": "0.1.0",
+  "type": "module",
+  "description": "手机扩展示例插件（DSH）：随包带三个示例扩展，装上之后手机的扩展页就能安装它们。",
+  "license": "MIT",
+  "main": "./index.js",
+  "exports": {
+    ".": "./index.js",
+    "./package.json": "./package.json"
+  },
+  "engines": {
+    "dsh": ">=0.2.0",
+    "node": "^22.19.0 || >=24.0.0"
+  },
+  "dshMobileExtensions": "extensions",
+  "files": [
+    "index.js",
+    "cordis.patch.yml",
+    "extensions/**",
+    "README.md",
+    "LICENSE"
+  ],
+  "keywords": [
+    "dsh",
+    "dsh-plugin",
+    "deepseek-harness",
+    "deepseek-harness-plugin",
+    "cordis-plugin",
+    "mobile",
+    "extension",
+    "demo"
+  ]
+}

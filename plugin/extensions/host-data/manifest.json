@@ -1,0 +1,9 @@
+{
+  "name": "宿主取数",
+  "version": "1.0.0",
+  "apiVersion": "1",
+  "description": "从电脑上你那个插件的服务取一份数据。演示 host.data：页面照常 fetch，命中的请求被转给电脑，拿回一份能用的 Response。",
+  "capabilities": ["content.read", "host.data"],
+  "hostData": { "service": "example-service", "match": ["/api/"] },
+  "entry": { "name": "宿主取数", "slot": "normal" }
+}
